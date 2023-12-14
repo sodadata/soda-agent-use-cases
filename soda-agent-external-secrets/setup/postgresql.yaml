@@ -1,0 +1,61 @@
+---
+auth:
+  postgresPassword: postgres
+  username: nyc
+  password: nyc
+  database: nyc
+primary:
+  initContainers:
+    - name: download-nyc-bus-breakdown-and-delays
+      image: alpine:3.16.2
+      command: ['sh', '-c', 'echo "downloading ..." && wget "https://data.cityofnewyork.us/api/views/ez4e-fazm/rows.tsv?accessType=DOWNLOAD&bom=true" -O /nyc/nyc_bus_breakdown_and_delays.tsv && head -n 2 /nyc/nyc_bus_breakdown_and_delays.tsv']
+      volumeMounts:
+        - mountPath: /nyc
+          name: nyc-bus-breakdown-and-delays
+  initdb:
+    user: postgres
+    password: postgres
+    scripts:
+      soda.sql: |
+        CREATE USER soda WITH PASSWORD 'soda';
+        CREATE DATABASE soda OWNER soda;
+        GRANT ALL PRIVILEGES ON DATABASE soda TO soda;
+        GRANT nyc TO soda;
+      nyc.sql: |
+        \c nyc;
+        SET ROLE nyc;
+        CREATE TABLE bus_breakdown_and_delays (
+        	school_year varchar,
+        	busbreakdown_id int,
+        	run_type varchar,
+        	bus_no varchar,
+        	route_number varchar,
+        	reason varchar,
+        	schools_serviced varchar,
+        	occured_on timestamp,
+        	created_on timestamp,
+        	boro varchar,
+        	bus_company_name varchar,
+        	how_long_delayed varchar,
+        	number_of_students_on_the_bus int,
+        	has_contractor_notified_schools varchar,
+        	has_contractor_notified_parents varchar,
+        	have_you_alerted_opt varchar,
+        	informed_on timestamp,
+        	incident_number varchar,
+        	last_updated_on timestamp,
+        	breakdown_or_running_late varchar,
+        	school_age_or_prek varchar
+        );
+
+        \COPY bus_breakdown_and_delays FROM '/nyc/nyc_bus_breakdown_and_delays.tsv' DELIMITER E'\t' CSV HEADER;
+  extraVolumes:
+    - name: nyc-bus-breakdown-and-delays
+      emptyDir: {}
+  extraVolumeMounts:
+    - mountPath: /nyc
+      name: nyc-bus-breakdown-and-delays
+  persistence:
+    enabled: false
+  service:
+    type: NodePort

@@ -1,0 +1,25 @@
+---
+server:
+  extraContainers:
+    - name: vault-init
+      image: registry.hub.docker.com/sundbp/vault-init-dev:8
+      imagePullPolicy: Always
+      env:
+        - name: VAULT_ADDR
+          value: http://127.0.0.1:8200
+        - name: VAULT_AUTO_UNSEAL
+          value: "false"
+        - name: VAULT_SECRET_SHARES
+          value: "1"
+        - name: VAULT_SECRET_THRESHOLD
+          value: "1"
+      volumeMounts:
+        - name: vault-init
+          mountPath: /opt/vault-secrets-plaintext
+  extraPorts:
+    - containerPort: 6565
+      name: vault-init
+  volumes:
+    - name: vault-init
+      persistentVolumeClaim:
+        claimName: vault-init
